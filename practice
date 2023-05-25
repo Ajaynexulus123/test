@@ -1,0 +1,38 @@
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://user:pass@localhost:5432/socialmediadb'
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.String(280), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('posts', lazy=True))
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    name = request.json['name']
+    new_user = User(name=name)
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'message': 'new user created'})
+
+@app.route('/api/posts', methods=['POST'])
+def create_post():
+    content = request.json['content']
+    user_id = request.json['user_id']
+    new_post = Post(content=content, user_id=user_id)
+    db.session.add(new_post)
+    db.session.commit()
+    return jsonify({'message': 'new post created'})
+
+@app.route('/api/posts', methods=['GET'])
+def get_posts():
+    posts = Post.query.all()
+    return jsonify({'posts': [{'id': post.id, 'content': post.content, 'user_id': post.user_id} for post in posts]})
